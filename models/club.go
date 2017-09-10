@@ -1,9 +1,8 @@
 package models
 
 type Club struct {
-	id int
-	name string
-	icon string
-	deleted bool
+	ID      int
+	Name    string
+	Icon    string
+	Deleted bool
 }
-

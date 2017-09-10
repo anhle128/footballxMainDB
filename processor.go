@@ -2,37 +2,37 @@ package footballxMainDB
 
 import (
 	"database/sql"
-	"fmt"
 
+	"github.com/anhle/footballxMainDB/models"
 	_ "github.com/lib/pq"
 )
 
-// DatabaseInfo data need to connect db
-type DatabaseInfo struct {
-	Username string
-	Password string
-	DB       string
-	Host     string
-	Port     int
-}
-
 var currentDB *sql.DB
-var databaseInfo DatabaseInfo
+var dbInfo *models.DBInfo
 
-func (info DatabaseInfo) getConnectString() string {
-	return fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable host=%s port=%d",
-		info.Username, info.Password, info.DB, info.Host, info.Port)
+// InitTestDBInfo create db info for testing
+func initTestDBInfo() *models.DBInfo {
+	return &models.DBInfo{Username: "root", Password: "123456789", DB: "football-x-dev", Host: "localhost", Port: 5432}
 }
 
-// SetDatabaseInfo need to opend connection
-func SetDatabaseInfo(info DatabaseInfo) {
-	databaseInfo = info
+// SetDBInfo need to opend connection
+func SetDBInfo(info models.DBInfo) {
+	dbInfo = &info
+}
+
+// GetDBInfo return current db info
+func GetDBInfo() models.DBInfo {
+	return *dbInfo
 }
 
 // Opend connection to db
 func Opend() error {
 
-	db, err := sql.Open("postgres", databaseInfo.getConnectString())
+	if dbInfo == nil {
+		dbInfo = initTestDBInfo()
+	}
+
+	db, err := sql.Open("postgres", dbInfo.GetConnectString())
 	currentDB = db
 
 	if err != nil {
@@ -42,12 +42,12 @@ func Opend() error {
 	return nil
 }
 
-// Gets return multiple rows
+// Gets multiple rows data
 func Gets(query string, args ...interface{}) (*sql.Rows, error) {
 	return currentDB.Query(query, args...)
 }
 
-// Get return one row
+// Get one row data
 func Get(query string, args ...interface{}) *sql.Row {
 	return currentDB.QueryRow(query, args...)
 }
@@ -64,17 +64,10 @@ func Insert(query string, args ...interface{}) (int, error) {
 	return lastInsertID, nil
 }
 
-// Delete one or more rows data
-func Delete(query string, args ...interface{}) (int64, error) {
-	return execDatas(query, args...)
-}
-
-// Update one or more rows data
-func Update(query string, args ...interface{}) (int64, error) {
-	return execDatas(query, args...)
-}
-
-func execDatas(query string, args ...interface{}) (int64, error) {
+// Exec executes a prepared statement with the given arguments and
+// returns a Result summarizing the effect of the statement.
+// use fof update and delete query
+func Exec(query string, args ...interface{}) (int64, error) {
 	stm, err := currentDB.Prepare(query)
 	if err != nil {
 		return -1, err
