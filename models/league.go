@@ -1,10 +1,11 @@
 package models
 
+// League model
 type League struct {
-	id int
-	name string
-	icon string
-	url string
-	arena_id string
-	deleted bool
+	ID      int64
+	Name    string
+	Icon    string
+	URL     string
+	ArenaID string
+	Deleted bool
 }
