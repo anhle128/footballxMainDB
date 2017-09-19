@@ -2,11 +2,11 @@ package models
 
 import "time"
 
-type season struct{
-	int int
-	league_id string
-	date_start time.Time
-	date_end time.Time
-	deleted bool
+// Season model
+type Season struct {
+	ID        int64
+	LeagueID  int64
+	DateStart time.Time
+	DateEnd   time.Time
+	Deleted   bool
 }
-

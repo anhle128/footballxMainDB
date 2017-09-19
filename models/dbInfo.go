@@ -8,7 +8,7 @@ type DBInfo struct {
 	Password string
 	DB       string
 	Host     string
-	Port     int
+	Port     int64
 }
 
 // GetConnectString return string connection from DBInfo

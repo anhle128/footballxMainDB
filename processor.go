@@ -7,8 +7,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var currentDB *sql.DB
-var dbInfo *models.DBInfo
+type Datastore struct {
+	*sql.DB
+	*models.DBInfo
+}
+
+var currentDS Datastore
+
+// var dbInfo *models.DBInfo
 
 // InitTestDBInfo create db info for testing
 func initTestDBInfo() *models.DBInfo {
@@ -17,47 +23,50 @@ func initTestDBInfo() *models.DBInfo {
 
 // SetDBInfo need to opend connection
 func SetDBInfo(info models.DBInfo) {
-	dbInfo = &info
+	currentDS.DBInfo = &info
 }
 
 // GetDBInfo return current db info
 func GetDBInfo() models.DBInfo {
-	return *dbInfo
+	return *currentDS.DBInfo
 }
 
 // Opend connection to db
-func Opend() error {
+func Opend() (*Datastore, error) {
 
-	if dbInfo == nil {
-		dbInfo = initTestDBInfo()
+	if currentDS.DBInfo == nil {
+		currentDS.DBInfo = initTestDBInfo()
 	}
 
-	db, err := sql.Open("postgres", dbInfo.GetConnectString())
-	currentDB = db
+	db, err := sql.Open("postgres", currentDS.DBInfo.GetConnectString())
+	currentDS.DB = db
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &currentDS, nil
 }
 
 // Gets multiple rows data
-func Gets(query string, args ...interface{}) (*sql.Rows, error) {
-	return currentDB.Query(query, args...)
+// Implement IDatastorer interface
+func (ds Datastore) Gets(query string, args ...interface{}) (*sql.Rows, error) {
+	return ds.DB.Query(query, args...)
 }
 
 // Get one row data
-func Get(query string, args ...interface{}) *sql.Row {
-	return currentDB.QueryRow(query, args...)
+// Implement IDatastorer interface
+func (ds Datastore) Get(query string, args ...interface{}) *sql.Row {
+	return ds.DB.QueryRow(query, args...)
 }
 
 // Insert one row to database
-func Insert(query string, args ...interface{}) (int, error) {
+// Implement IDatastorer interface
+func (ds Datastore) Insert(query string, args ...interface{}) (int64, error) {
 
-	var lastInsertID int
+	var lastInsertID int64
 
-	err := currentDB.QueryRow(query, args...).Scan(&lastInsertID)
+	err := ds.DB.QueryRow(query, args...).Scan(&lastInsertID)
 	if err != nil {
 		return -1, err
 	}
@@ -67,8 +76,9 @@ func Insert(query string, args ...interface{}) (int, error) {
 // Exec executes a prepared statement with the given arguments and
 // returns a Result summarizing the effect of the statement.
 // use fof update and delete query
-func Exec(query string, args ...interface{}) (int64, error) {
-	stm, err := currentDB.Prepare(query)
+// Implement IDatastorer interface
+func (ds Datastore) Exec(query string, args ...interface{}) (int64, error) {
+	stm, err := ds.DB.Prepare(query)
 	if err != nil {
 		return -1, err
 	}
@@ -81,10 +91,44 @@ func Exec(query string, args ...interface{}) (int64, error) {
 	return result.RowsAffected()
 }
 
+// // Create insert new data row to db
+// // return id , error
+// // Implement IDatastorer interface
+// func (ds Datastore) Create(model models.IQueryGenerator) (int64, error) {
+// 	return ds.Insert(model.GenCreateQuery())
+// }
+
+// // Update data to database
+// // return number effected row, error
+// // Implement IDatastorer interface
+// func (ds Datastore) Update(modeDB models.IQueryGenerator) (int64, error) {
+// 	return ds.Exec(modeDB.GenUpdateQuery())
+// }
+
+// // Delete data, change deleted = true
+// // return number effected row, error
+// // Implement IDatastorer interface
+// func (ds Datastore) Delete(modeDB models.IQueryGenerator) (int64, error) {
+// 	return ds.Exec(modeDB.GenDeleteQuery())
+// }
+
+// // Undo data, change deleted = false
+// // return number effected row, error
+// // Implement IDatastorer interface
+// func (ds Datastore) Undo(modeDB models.IQueryGenerator) (int64, error) {
+// 	return ds.Exec(modeDB.GenUndoQuery())
+// }
+
+// // ForceDelete data, real delete data from db
+// // return number effected row, error
+// // Implement IDatastorer interface
+// func (ds Datastore) ForceDelete(modeDB models.IQueryGenerator) (int64, error) {
+// 	return ds.Exec(modeDB.GenForceDeleteQuery())
+// }
+
 // Close connection to db
 func Close() {
-	if currentDB != nil {
-		currentDB.Close()
-		currentDB = nil
+	if currentDS.DB != nil {
+		currentDS.DB.Close()
 	}
 }

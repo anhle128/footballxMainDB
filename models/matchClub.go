@@ -1,10 +1,12 @@
 package models
 
+// MatchClub model
 type MatchClub struct {
-	club_id int
-	match_id int
-	home bool
-	goals int
-	result int
-	deleted bool
+	ID      int64
+	ClubID  int64
+	MatchID int64
+	Home    bool
+	Goals   int64
+	Result  int64
+	Deleted bool
 }

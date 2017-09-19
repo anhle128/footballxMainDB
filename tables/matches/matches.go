@@ -1,7 +1,8 @@
-package clubs
+package matches
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/anhle/footballxMainDB/models"
 	"github.com/anhle/footballxMainDB/tables"
@@ -24,7 +25,7 @@ func SetDatastore(ds models.IDatastorer) {
 
 // Create club
 // Implement ICURD interface
-func Create(model models.Club) (*models.Club, error) {
+func Create(model models.Match) (*models.Match, error) {
 	newID, err := currentDS.Insert(model.GenCreateQuery())
 	if err != nil {
 		return nil, err
@@ -35,25 +36,25 @@ func Create(model models.Club) (*models.Club, error) {
 
 // Update club
 // Implement ICURD interface
-func Update(model models.Club) (int64, error) {
+func Update(model models.Match) (int64, error) {
 	return currentDS.Exec(model.GenUpdateQuery())
 }
 
 // Delete club
 // Implement ICURD interface
-func Delete(model models.Club) (int64, error) {
+func Delete(model models.Match) (int64, error) {
 	return currentDS.Exec(model.GenDeleteQuery())
 }
 
 // Undo club
 // Implement ICURD interface
-func Undo(model models.Club) (int64, error) {
+func Undo(model models.Match) (int64, error) {
 	return currentDS.Exec(model.GenUndoQuery())
 }
 
 // RealDelete club
 // Implement ICURD interface
-func RealDelete(model models.Club) (int64, error) {
+func RealDelete(model models.Match) (int64, error) {
 	return currentDS.Exec(model.GenRealDeleteQuery())
 }
 
@@ -61,45 +62,44 @@ func RealDelete(model models.Club) (int64, error) {
 // ─── SELECT FUNCTION ────────────────────────────────────────────────────────────
 //
 
-// GetByID get club by id
-func GetByID(id int) (*models.Club, error) {
-	row := currentDS.Get("Select * from clubs where id = $1", id)
-	return convertRowToClub(row)
+// GetBySeasenDateIndex get data by seasonID,  date, index
+// return match by date and index
+func GetBySeasenDateIndex(seasonID int64, date time.Time, index int64) (*models.Match, error) {
+	row := currentDS.Get("Select * from matchs where index = $1 and date_unix = $2 and season_id = $3 and deleted = false", index, date.Unix(), seasonID)
+	return convertRowToMatch(row)
 }
 
-// GetByName get clubs by name
-func GetByName(name string) (*models.Club, error) {
-	row := currentDS.Get("Select * from clubs where name = $1 and deleted = false", name)
-	return convertRowToClub(row)
-}
-
-// ForceGetByName force get club by name
-// if is exsit return club
-// if not, create and return
-func ForceGetByName(name string) (*models.Club, error) {
-	pointerClub, err := GetByName(name)
-
+// ForceGetBySeasenDateIndex force get data by easonID int, date time.Time, index int
+// If not exist, create one and return
+func ForceGetBySeasenDateIndex(seasonID int64, date time.Time, index int64) (*models.Match, error) {
+	match, err := GetBySeasenDateIndex(seasonID, date, index)
 	if err != nil {
-		return nil, err
+		if err != sql.ErrNoRows {
+			return nil, err
+		}
+		return Create(models.Match{SeasonID: seasonID, Date: date, Index: index})
 	}
 
-	if pointerClub != nil {
-		return pointerClub, nil
-	}
-
-	return Create(models.Club{Name: name, Deleted: false})
+	return match, nil
 }
 
 //
 // ─── SUPPORT FUNCTION ───────────────────────────────────────────────────────────
 //
 
-func convertRowToClub(row tables.IRowScanner) (*models.Club, error) {
+func convertRowToMatch(row tables.IRowScanner) (*models.Match, error) {
 
-	club := models.Club{}
-	var strIcon sql.NullString
+	match := models.Match{}
+	var strURLResult sql.NullString
 
-	err := row.Scan(&club.ID, &club.Name, &strIcon, &club.Deleted)
+	err := row.Scan(&match.ID,
+		&match.SeasonID,
+		&match.Date,
+		&strURLResult,
+		&match.Index,
+		&match.DateUnix,
+		&match.Deleted)
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -108,9 +108,9 @@ func convertRowToClub(row tables.IRowScanner) (*models.Club, error) {
 		return nil, err
 	}
 
-	if strIcon.Valid {
-		club.Icon = strIcon.String
+	if strURLResult.Valid {
+		match.URLResult = strURLResult.String
 	}
 
-	return &club, nil
+	return &match, nil
 }
